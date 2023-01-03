@@ -1,25 +1,37 @@
 {
-  "name": "origin-react",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "lint": "eslint --ext .ts,.jsx,.tsx --fix --quiet ./packages"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@commitlint/cli": "^17.3.0",
-    "@commitlint/config-conventional": "^17.3.0",
-    "@typescript-eslint/eslint-plugin": "^5.46.0",
-    "@typescript-eslint/parser": "^5.46.0",
-    "commitlint": "^17.3.0",
-    "eslint": "^8.29.0",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "husky": "^8.0.2",
-    "prettier": "^2.8.1",
-    "typescript": "^4.9.4"
-  }
+    "name": "origin-react",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "lint": "eslint --ext .ts,.jsx,.tsx --fix --quiet ./packages",
+        "build:dev": "rimraf dist && rollup --bundleConfigAsCjs --config ./scripts/rollup/dev.config.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@commitlint/cli": "^17.3.0",
+        "@commitlint/config-conventional": "^17.3.0",
+        "@rollup/plugin-alias": "^4.0.2",
+        "@rollup/plugin-commonjs": "^23.0.4",
+        "@types/fs-extra": "^9.0.13",
+        "@typescript-eslint/eslint-plugin": "^5.46.0",
+        "@typescript-eslint/parser": "^5.46.0",
+        "commitlint": "^17.3.0",
+        "eslint": "^8.29.0",
+        "eslint-config-prettier": "^8.5.0",
+        "eslint-plugin-prettier": "^4.2.1",
+        "fs-extra": "^11.1.0",
+        "husky": "^8.0.2",
+        "prettier": "^2.8.1",
+        "rimraf": "^3.0.2",
+        "rollup": "^3.7.0",
+        "rollup-plugin-generate-package-json": "^3.2.0",
+        "rollup-plugin-typescript2": "^0.34.1",
+        "typescript": "^4.9.4"
+    },
+    "dependencies": {
+        "@rollup/plugin-replace": "^5.0.2"
+    }
 }
