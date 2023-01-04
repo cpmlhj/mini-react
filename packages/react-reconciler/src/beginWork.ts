@@ -2,9 +2,15 @@
 
 import { FiberNode } from './fiber'
 import { processUpdateQueue, UpdateQueue } from './updateQueue'
-import { HostRoot, HostComponent, HostText } from './workTags'
+import {
+	HostRoot,
+	HostComponent,
+	HostText,
+	FunctionComponent
+} from './workTags'
 import { reconcilerChildFibers, mountChildFibers } from './childFiber'
 import { ReactElement } from 'shared/ReactTypes'
+import { renderWithHooks } from './fiberHooks'
 
 export const beginWork = (wip: FiberNode) => {
 	// 比较、返回子fiber
@@ -15,8 +21,10 @@ export const beginWork = (wip: FiberNode) => {
 			return updateHostComponent(wip)
 		case HostText:
 			return null
+		case FunctionComponent:
+			return updateFunctionComponent(wip)
 		default:
-			if (__Dev__) {
+			if (true) {
 				console.warn('beginWork 未实现')
 			}
 			return null
@@ -39,6 +47,12 @@ function updateHostComponent(wip: FiberNode) {
 	// <div><span></span></div>
 	const nextProps = wip.pendingProps
 	const nextChildren = nextProps.children
+	reconcilerChildren(wip, nextChildren)
+	return wip.child
+}
+
+function updateFunctionComponent(wip: FiberNode) {
+	const nextChildren = renderWithHooks(wip)
 	reconcilerChildren(wip, nextChildren)
 	return wip.child
 }

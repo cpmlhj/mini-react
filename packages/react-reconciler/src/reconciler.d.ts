@@ -1,1 +1,1 @@
-declare let __Dev__: boolean
+// declare let true: boolean

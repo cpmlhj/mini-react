@@ -41,7 +41,7 @@ export const commitMutationEffectOnFiber = (finshwork: FiberNode) => {
 const commitPlacement = (finshwork: FiberNode) => {
 	// parent Dom
 	// finishedWork ~
-	if (__Dev__) {
+	if (true) {
 		console.warn('执行Placement操作', finshwork)
 	}
 	const hostParent = getHostParent(finshwork)
@@ -60,7 +60,7 @@ function getHostParent(fiber: FiberNode): Container | null {
 			return (parent.stateNode as FiberRootNode).container
 		parent = parent.return
 	}
-	if (__Dev__) {
+	if (true) {
 		console.warn('未找到host parent')
 	}
 	return null
@@ -76,7 +76,7 @@ function appendPlacementNodeIntoContainer(
 		return
 	}
 	const child = finishWork.child
-	while (child !== null) {
+	if (child !== null) {
 		appendPlacementNodeIntoContainer(child, hostParent)
 		let sibling = child.sibling
 		while (sibling !== null) {

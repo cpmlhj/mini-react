@@ -41,7 +41,7 @@ function renderRoot(root: FiberRootNode) {
 			workLoop()
 			break
 		} catch (e) {
-			if (__Dev__) {
+			if (true) {
 				console.warn('error workLoop', e)
 			}
 			workInProgress = null
@@ -56,7 +56,7 @@ function renderRoot(root: FiberRootNode) {
 function commitRoot(root: FiberRootNode) {
 	const finishWork = root.finishWork
 	if (finishWork === null) return
-	if (__Dev__) {
+	if (true) {
 		console.warn('commit 阶段开始', finishWork)
 	}
 	root.finishWork = null

@@ -23,7 +23,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 						)
 					)
 				default:
-					if (__Dev__) {
+					if (true) {
 						console.warn('未实现的reconcile类型')
 					}
 					break
@@ -37,7 +37,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 				reconcilerSingleTextNode(returnFiber, currentFiber, newChild)
 			)
 		}
-		if (__Dev__) {
+		if (true) {
 			console.warn('未实现的reconcile类型')
 		}
 		return null

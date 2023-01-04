@@ -24,7 +24,7 @@ export function getPkgJson(pkgname) {
 
 export function getBaseRollupPlugin(
 	alias = {
-		__DEV__: () => JSON.stringify('yes'),
+		// true: () => JSON.stringify('yes'),
 		preventAssignment: true
 	},
 	tsConfig = {}

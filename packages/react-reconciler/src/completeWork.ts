@@ -1,5 +1,10 @@
 import { FiberNode } from './fiber'
-import { HostComponent, HostRoot, HostText } from './workTags'
+import {
+	FunctionComponent,
+	HostComponent,
+	HostRoot,
+	HostText
+} from './workTags'
 import {
 	createInstance,
 	appendInitialChild,
@@ -54,26 +59,42 @@ export const completeWork = (wip: FiberNode) => {
 			}
 			bubbleProperties(wip)
 			return null
+		case FunctionComponent:
+			bubbleProperties(wip)
+			return null
 		default:
-			if (__Dev__) {
+			if (true) {
 				console.warn('未处理的类型', wip.tag)
 			}
 			return null
 	}
 }
 
+/**
+ *
+ * @param parent workInProgress.stateNode -> DOM Element
+ * @param wip workInProgress
+ * ① 从当前FiberNode 向下遍历 遍历到第一层DOM元素类型(HostComponent、HostText) 通过appendChild方法插入到parent末尾
+ * ② 对兄弟FiberNode执行步骤①
+ * ③ 如果没有兄弟FiberNode 则对父FiberNode 的兄弟执行步骤①
+ * ④ 当遍历流程回到最初的workInProgress(就是入参时候的FiberNode)时终止
+ */
 function appendAllChildren(parent: Container, wip: FiberNode) {
 	let node = wip.child
 	while (node !== null) {
 		if (node?.tag === HostComponent || node?.tag === HostText) {
+			// 步骤 ①
 			appendInitialChild(parent, node.stateNode)
 		} else if (node.child !== null) {
+			// 步骤 ①
 			node.child.return = node
 			node = node.child
 			continue
 		}
+		// 步骤 ④
 		if (node === wip) return
 		while (node.sibling === null) {
+			// 步骤 ② ③
 			if (node.return === null || node.return === wip) return
 			node = node?.return
 		}
@@ -82,6 +103,7 @@ function appendAllChildren(parent: Container, wip: FiberNode) {
 	}
 }
 
+// 通过传入当前的workInProgress 向下child sibling遍历，冒泡flags
 function bubbleProperties(wip: FiberNode) {
 	let subtreeFlags = NoFlags
 	let child = wip.child
@@ -89,6 +111,8 @@ function bubbleProperties(wip: FiberNode) {
 		subtreeFlags |= child.subtreeFlags
 		subtreeFlags |= child.flags
 		child.return = wip
+		// 只需要拿 child, sibling, 因为 child sibling的 child flags
+		//  已经在上一轮冒泡中将自身的flags 冒泡到 child ,sibling的flags中
 		child = child.sibling
 	}
 	wip.subtreeFlags |= subtreeFlags
