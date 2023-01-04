@@ -12,7 +12,7 @@ export default [
 		output: [
 			{
 				file: `${pkgBuildPath}/index.js`,
-				name: 'index.js',
+				name: 'ReactDOM',
 				format: 'umd'
 			},
 			{
@@ -43,5 +43,16 @@ export default [
 				})
 			})
 		]
+	},
+	// react-test
+	{
+		input: `${pkgPath}/test-utils.ts`,
+		output: {
+			file: `${pkgBuildPath}/test-utils.js`,
+			name: 'testUtils.js',
+			format: 'umd'
+		},
+		external: ['react-dom', 'react'],
+		plugins: [...getBaseRollupPlugin()]
 	}
 ]

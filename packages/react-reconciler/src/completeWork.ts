@@ -87,6 +87,7 @@ function appendAllChildren(parent: Container, wip: FiberNode) {
 			appendInitialChild(parent, node.stateNode)
 		} else if (node.child !== null) {
 			// 步骤 ①
+			// 当第一层child 没有的时候 才会继续向下遍历child.child, 其余情况只会遍历 sibilng
 			node.child.return = node
 			node = node.child
 			continue

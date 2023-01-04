@@ -11,7 +11,7 @@ export default [
 		input: `${pkgPath}/${module}`,
 		output: {
 			file: `${pkgBuildPath}/index.js`,
-			name: 'index.js',
+			name: 'React',
 			format: 'umd'
 		},
 		plugins: getBaseRollupPlugin()
@@ -23,13 +23,13 @@ export default [
 			// prod
 			{
 				file: `${pkgBuildPath}/jsx.runtime.js`,
-				name: 'jsx.runtime.js',
+				name: 'jsx.runtime',
 				format: 'umd'
 			},
 			// dev
 			{
 				file: `${pkgBuildPath}/jsx.dev-runtime.js`,
-				name: 'jsx.dev-runtime.js',
+				name: 'jsx.dev-runtime',
 				format: 'umd'
 			}
 		],
