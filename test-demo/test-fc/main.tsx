@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client'
 
 const App = () => {
 	const [num, setNum] = useState(100)
-	return (
+	window.setNum = setNum
+	return num === 3 ? (
+		<div>我是三啊</div>
+	) : (
 		<div>
 			<span>{num}</span>
 		</div>
