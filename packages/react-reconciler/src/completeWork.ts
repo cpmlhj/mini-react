@@ -12,6 +12,7 @@ import {
 	Container
 } from 'hostConfig'
 import { NoFlags, Update } from './fiberFlags'
+import { updateFiberProps } from 'react-dom/src/SyntheticEvent'
 
 export const completeWork = (wip: FiberNode) => {
 	// 递归中的归
@@ -21,6 +22,9 @@ export const completeWork = (wip: FiberNode) => {
 		case HostComponent:
 			if (current !== null && wip.stateNode) {
 				// update
+				// props 是否发生变化
+				// 1.变化了  update flag
+				updateFiberProps(wip.stateNode, newProps)
 			} else {
 				// 1. 构建Dom
 				// 2. 将Dom插入到Dom树
@@ -39,7 +43,7 @@ export const completeWork = (wip: FiberNode) => {
 				 * appendInitialChild中，parent为div（真实DOM）节点, node.stateNode 为子节点的真实DOM,挂载到div上
 				 * */
 				// const instance = createInstance(wip.type, newProps)
-				const instance = createInstance(wip.type)
+				const instance = createInstance(wip.type, newProps)
 				appendAllChildren(instance, wip)
 				wip.stateNode = instance
 			}

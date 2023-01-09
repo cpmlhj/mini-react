@@ -1,5 +1,7 @@
 import { FiberNode } from 'react-reconciler/src/fiber'
 import { HostComponent, HostText } from 'react-reconciler/src/workTags'
+import { props } from 'shared/ReactTypes'
+import { updateFiberProps } from './SyntheticEvent'
 
 export type Container = Element
 
@@ -8,9 +10,10 @@ export type Instance = Element
 export type TextInstance = Text
 
 // export const createInstance = (type: string, props: any): Instance => {
-export const createInstance = (type: string): Instance => {
+export const createInstance = (type: string, props: props): Instance => {
 	// ToDo : propd
 	const element = document.createElement(type)
+	updateFiberProps(element, props)
 	return element
 }
 
@@ -22,7 +25,9 @@ export const appendInitialChild = (
 }
 
 export const createTextInstance = (content: string) => {
-	return document.createTextNode(content)
+	const element = document.createTextNode(content)
+
+	return element
 }
 
 export const commitUpdate = (fiber: FiberNode) => {
@@ -32,6 +37,9 @@ export const commitUpdate = (fiber: FiberNode) => {
 				fiber.stateNode,
 				fiber.memoizedProps.content
 			)
+		// case HostComponent:
+		// 	updateFiberProps()
+		// 	return
 		default:
 			if (true) {
 				console.warn('未实现的commitUpdate类型', fiber)
@@ -52,6 +60,14 @@ export const removeChild = (
 	container: Container
 ) => {
 	container.removeChild(child)
+}
+
+export const insertChildToContainer = (
+	child: Instance,
+	container: Container,
+	before: Instance
+) => {
+	container.insertBefore(child, before)
 }
 
 export const appendChildToContainer = appendInitialChild
