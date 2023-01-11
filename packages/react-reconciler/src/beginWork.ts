@@ -6,7 +6,8 @@ import {
 	HostRoot,
 	HostComponent,
 	HostText,
-	FunctionComponent
+	FunctionComponent,
+	Fragement
 } from './workTags'
 import { reconcilerChildFibers, mountChildFibers } from './childFiber'
 import { ReactElement } from 'shared/ReactTypes'
@@ -23,6 +24,8 @@ export const beginWork = (wip: FiberNode) => {
 			return null
 		case FunctionComponent:
 			return updateFunctionComponent(wip)
+		case Fragement:
+			return updateFragementComponent(wip)
 		default:
 			if (true) {
 				console.warn('beginWork 未实现')
@@ -56,6 +59,12 @@ function updateHostComponent(wip: FiberNode) {
 
 function updateFunctionComponent(wip: FiberNode) {
 	const nextChildren = renderWithHooks(wip)
+	reconcilerChildren(wip, nextChildren)
+	return wip.child
+}
+
+function updateFragementComponent(wip: FiberNode) {
+	const nextChildren = wip.pendingProps
 	reconcilerChildren(wip, nextChildren)
 	return wip.child
 }

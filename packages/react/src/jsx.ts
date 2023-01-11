@@ -1,5 +1,5 @@
 // ReactElement
-import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbol'
+import { REACT_ELEMENT_TYPE, REACT_FRAGEMENT_TYPE } from 'shared/ReactSymbol'
 import {
 	ReactElement,
 	ElementType,
@@ -30,7 +30,6 @@ export const jsx = (type: ElementType, config: any, ...maybeChildren: any) => {
 	let key: Key = null
 	const props: props = {}
 	let ref: ref = null
-	console.log(config, 'config')
 	for (const prop in config) {
 		const val = config[prop]
 		if (prop === 'key') {
@@ -63,10 +62,10 @@ export const jsx = (type: ElementType, config: any, ...maybeChildren: any) => {
 }
 
 export const jsxDev = (type: ElementType, config: any, maybeKey: any) => {
-	let key: Key = maybeKey
+	let key: Key = maybeKey || null
 	const props: props = {}
 	let ref: ref = null
-	console.log(config, 'configconfigconfigv')
+
 	for (const prop in config) {
 		const val = config[prop]
 		if (prop === 'key') {
@@ -87,6 +86,8 @@ export const jsxDev = (type: ElementType, config: any, maybeKey: any) => {
 	}
 	return ReactElement(type, key, ref, props)
 }
+
+export const Fragment = REACT_FRAGEMENT_TYPE
 
 export const isValidElementFn = (object: any) => {
 	return (

@@ -18,6 +18,11 @@ const App = () => {
 			  ]
 	return (
 		<ul className="demo-class" key="ulk" onClick={() => setNum(num + 1)}>
+			{/* <>
+				<span>1</span>
+				<span>2</span>
+				{test}
+			</> */}
 			{test}
 		</ul>
 	)

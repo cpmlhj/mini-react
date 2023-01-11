@@ -15,6 +15,7 @@ import {
 	Update
 } from './fiberFlags'
 import {
+	Fragement,
 	FunctionComponent,
 	HostComponent,
 	HostRoot,
@@ -128,16 +129,20 @@ function getHostSibling(fiber: FiberNode) {
 		}
 		node.sibling.return = node.return
 		node = node.sibling
+
+		// 这里处理的情况是 sibling 有可能是ReactComponent, 需要找到Component下的根HostComponent
 		while (node.tag !== HostText && node.tag !== HostComponent) {
 			// 向下遍历
 			if (node.flags !== NoFlags) {
-				// 不稳定的节点
+				// 不稳定的节点  如果当前 sibling 不稳定 跳过此sibling
 				continue findSibling
 			}
+			// 如果当前sibling 没有根HostComponent也跳过
 			if (node.child === null) continue findSibling
 			node.child.return = node
 			node = node.child
 		}
+		// 稳定的节点  如果当前 找到Node是稳定的
 		if ((node.flags & Placement) === NoFlags) {
 			return node.stateNode
 		}
@@ -152,6 +157,14 @@ function insertOrappendPlacementNodeIntoContainer(
 	// fiber host
 	if (finishWork.tag === HostComponent || finishWork.tag === HostText) {
 		if (before) {
+			/**
+			 * 为了处理一下情况
+			 * <div>
+			 *    span 1
+			 *    span 3 -> finishWork   就是当前要移动的FiberNode
+			 *    span 2 -> before   通过getHostSibling找到的稳定的 sibling FiberNode
+			 * </div>
+			 */
 			insertChildToContainer(finishWork.stateNode, hostParent, before)
 		} else {
 			appendChildToContainer(hostParent, finishWork.stateNode)
@@ -170,6 +183,30 @@ function insertOrappendPlacementNodeIntoContainer(
 }
 
 /**
+ * @param childrenToDelete
+ * @param unmountFiber
+ * childToDelete 的情况目前分一下
+ * ① 根节点类型不是Fragment的，那就是在根节点向下遍历 处理每个FiberNode的情况，最后返回根节点的HostComponent 此时删除的操作 = 1
+ * ② 根节点类型时Fragment的， 那么就需要删除Fragment下的所有child 此时 要删除的操作长度 >= 1
+ */
+function recordHostChildrenToDelete(
+	childrenToDelete: FiberNode[],
+	unmountFiber: FiberNode
+) {
+	// 1. 找到第一个root host 节点
+	const lastOne = childrenToDelete[childrenToDelete.length - 1]
+	if (!lastOne) {
+		childrenToDelete.push(unmountFiber)
+	} else {
+		let node = lastOne.sibling
+		while (node !== null) {
+			if (unmountFiber === node) childrenToDelete.push(unmountFiber)
+			node = node.sibling
+		}
+	}
+}
+
+/**
  *
  * @param childToDelete 要删除的Fiber节点
  * 在childToDelete的子树中存在一下情况
@@ -177,25 +214,29 @@ function insertOrappendPlacementNodeIntoContainer(
  * ② 对于HostComponent 需要解绑ref
  * ③ 对于子树的[根HostComponent], 需要移除DOM 譬如 <App><div></div></App> 就需要找到App下的根节点
  * 要满足以上情况，需要对 childToDelete 遍历 child
+ * ④ <div>
+       <> -> childToDelete 
+          <p>xxx</p>
+          <p>yyy</p>
+        </>
+      </div>
  */
 function commitDeletion(childToDelete: FiberNode) {
-	let rootHostNode: FiberNode | null = null
+	const rootChildToDelete: FiberNode[] = []
 	// 递归子树
 	commitNestedComponent(childToDelete, (unmountFiber) => {
 		switch (unmountFiber.tag) {
 			case HostComponent:
-				if (rootHostNode === null) {
-					rootHostNode = unmountFiber
-				}
-				//Todo: 解绑ref
+				recordHostChildrenToDelete(rootChildToDelete, unmountFiber)
+				//TODO: 解绑ref
 				return
 			case HostText:
-				if (rootHostNode === null) {
-					rootHostNode = unmountFiber
-				}
+				recordHostChildrenToDelete(rootChildToDelete, unmountFiber)
 				return
 			case FunctionComponent:
-				// Todo useEffect unmount
+				// TODO: useEffect unmount
+				return
+			case Fragement:
 				return
 			default:
 				if (true) {
@@ -204,11 +245,13 @@ function commitDeletion(childToDelete: FiberNode) {
 				return
 		}
 	})
-	if (rootHostNode !== null) {
+	if (rootChildToDelete.length !== 0) {
 		// commitNestedComponent 结束时返回的是root.child (根HostComponent)
 		const hostParent = getHostParent(childToDelete)
 		if (hostParent !== null)
-			removeChild((rootHostNode as FiberNode).stateNode, hostParent)
+			rootChildToDelete.forEach((node) => {
+				removeChild((node as FiberNode).stateNode, hostParent)
+			})
 	}
 	childToDelete.return = null
 	childToDelete.child = null
@@ -229,6 +272,12 @@ function commitNestedComponent(
 ) {
 	let node = root
 	while (true) {
+		/**
+		 *  <div> ①
+		 *      <span>1 ③</span> ②
+		 *      <span>2 5️⃣</span>  ④
+		 * </div>
+		 */
 		onCommitUnmount(node)
 		if (node.child !== null) {
 			// 向下遍历

@@ -1,5 +1,6 @@
 import { FiberNode } from './fiber'
 import {
+	Fragement,
 	FunctionComponent,
 	HostComponent,
 	HostRoot,
@@ -50,11 +51,14 @@ export const completeWork = (wip: FiberNode) => {
 			bubbleProperties(wip)
 			return null
 		case HostRoot:
+		case FunctionComponent:
+		case Fragement:
 			bubbleProperties(wip)
 			return null
 		case HostText:
 			if (current !== null && wip.stateNode) {
 				// update
+				// current.memoizedProps.content 就是当前使用的值， 也最新的值 wip.pendingProps比较
 				const oldText = current.memoizedProps.content
 				const newText = newProps.content
 				if (oldText !== newText) {
@@ -66,9 +70,6 @@ export const completeWork = (wip: FiberNode) => {
 				const instance = createTextInstance(newProps.content)
 				wip.stateNode = instance
 			}
-			bubbleProperties(wip)
-			return null
-		case FunctionComponent:
 			bubbleProperties(wip)
 			return null
 		default:

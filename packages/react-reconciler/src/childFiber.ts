@@ -1,12 +1,13 @@
-import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbol'
-import { props, ReactElement } from 'shared/ReactTypes'
+import { REACT_ELEMENT_TYPE, REACT_FRAGEMENT_TYPE } from 'shared/ReactSymbol'
+import { Key, props, ReactElement } from 'shared/ReactTypes'
 import {
 	createFiberFromElement,
+	createFiberFromFragement,
 	createWorkInProgress,
 	FiberNode
 } from './fiber'
 import { ChildDeletion, Placement } from './fiberFlags'
-import { HostText } from './workTags'
+import { Fragement, HostText } from './workTags'
 
 type ExistingChild = Map<string | number, FiberNode>
 
@@ -18,7 +19,26 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 	) {
 		//  return fiberNode
 		// 判断当前fiber的类型
+		// 判断Fragement
+		/**
+		 * 譬如 <div>
+		 *     <> -> newChild  type = REACT_FRAGEMENT_TYPE, key = null
+		 *      <p>123</p> -> newChild.props.children
+		 *    </>
+		      </div>
+		 */
+		const isUnKeyToLevelFragement =
+			typeof newChild === 'object' &&
+			newChild !== null &&
+			newChild.type === REACT_FRAGEMENT_TYPE &&
+			newChild.key === null
+		if (isUnKeyToLevelFragement) {
+			newChild = newChild?.props.children
+		}
 		if (typeof newChild === 'object' && newChild !== null) {
+			if (Array.isArray(newChild)) {
+				return reconcilerChildArray(returnFiber, currentFiber, newChild)
+			}
 			switch (newChild.$$typeof) {
 				case REACT_ELEMENT_TYPE:
 					return placeSingleChild(
@@ -34,11 +54,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 					}
 					break
 			}
-			if (Array.isArray(newChild)) {
-				return reconcilerChildArray(returnFiber, currentFiber, newChild)
-			}
 		}
-		// TODO: 多接点 ul > li*3
 
 		// HostText
 		if (typeof newChild === 'string' || typeof newChild === 'number') {
@@ -51,7 +67,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 		}
 		// 兜底 删除
 		if (currentFiber !== null) {
-			deleteChild(returnFiber, currentFiber)
+			deleteRemainingChildren(returnFiber, currentFiber)
 		}
 		return null
 	}
@@ -67,9 +83,13 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 			if (key === currentFiber.key) {
 				// key 相同
 				if (element.$$typeof === REACT_ELEMENT_TYPE) {
+					let props = element.props
+					if (element.type === REACT_FRAGEMENT_TYPE) {
+						props = props.children
+					}
 					if (element.type === currentFiber.type) {
 						// type 相同
-						const existing = useFiber(currentFiber, element.props)
+						const existing = useFiber(currentFiber, props)
 						existing.return = returnFiber
 						// 当前节点可复用， 标记剩下的节点删除
 						deleteRemainingChildren(
@@ -92,7 +112,15 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 			}
 		}
 		// 根据 element 创建 Fiber
-		const fiber = createFiberFromElement(element)
+		let fiber
+		if (element.type === REACT_FRAGEMENT_TYPE) {
+			fiber = createFiberFromFragement(
+				element.props.children,
+				element.key
+			)
+		} else {
+			fiber = createFiberFromElement(element)
+		}
 		fiber.return = returnFiber
 		return fiber
 	}
@@ -232,7 +260,7 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 		element: any
 	): FiberNode | null {
 		const EleKey = element.key !== null ? element.key : index
-		const beforeNode = existingChild.get(EleKey)
+		const beforeNode = existingChild.get(EleKey) || null
 		if (typeof element === 'string' || typeof element === 'number') {
 			// hostText
 			if (beforeNode) {
@@ -247,21 +275,65 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 		if (typeof element === 'object' && element !== null) {
 			switch (element.$$typeof) {
 				case REACT_ELEMENT_TYPE:
+					/**
+					 * <ul> -> child 是一个数组 
+                         <> -> element
+                          <li>1</li>
+                           <li>2</li>
+                         </>
+                         <li>3</li>
+                         <li>4</li>
+                       </ul>
+					 */
+					if (element.type === REACT_FRAGEMENT_TYPE) {
+						return updateFragement(
+							returnFiber,
+							beforeNode,
+							element,
+							EleKey,
+							existingChild
+						)
+					}
 					if (beforeNode) {
+						// 如果type 相同 key 相同 直接复用
 						if (beforeNode.type === element.type) {
 							existingChild.delete(EleKey)
 							return useFiber(beforeNode, element.props)
 						}
 					}
+					// type 相同 key 不相同（也有可能是当前节点并不存在key）重新创建新的FiberNode
 					return createFiberFromElement(element)
 			}
-			// TODO: 数组
+			// TODO: 数组  假设element为数组是 都是 Fragement
 			if (Array.isArray(element)) {
-				console.warn('暂不支持数组类型的child ')
-				return null
+				return updateFragement(
+					returnFiber,
+					beforeNode,
+					element,
+					EleKey,
+					existingChild
+				)
 			}
 		}
 		return null
+	}
+
+	function updateFragement(
+		returnFiber: FiberNode,
+		current: FiberNode | null,
+		elements: any[],
+		key: Key,
+		existingChild: ExistingChild
+	) {
+		let fiber
+		if (!current || current.tag !== Fragement) {
+			fiber = createFiberFromFragement(elements, key)
+		} else {
+			existingChild.delete(key)
+			fiber = useFiber(current, elements)
+		}
+		fiber.return = returnFiber
+		return fiber
 	}
 
 	function deleteRemainingChildren(
