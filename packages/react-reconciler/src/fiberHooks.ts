@@ -11,11 +11,27 @@ import {
 import { scheduleUpdateOnFiber } from './workloop'
 import { Action } from 'shared/ReactTypes'
 import { Lane, NoLane, requestUpdateLane } from './fiberLanes'
+import { Flags, PassiveEffect } from './fiberFlags'
+import { HookHasEffect, Passive } from './hookEffectTags'
 
+type EffectCallback = () => void
+type EffectDeps = any[] | null
 interface Hook {
 	memoizedState: any // 每个hook 自身存放的state
 	updateQueue: unknown
 	next: Hook | null
+}
+
+export interface Effect {
+	tag: Flags
+	create: EffectCallback | void
+	destory: EffectCallback | void
+	deps: EffectDeps
+	next: Effect | null
+}
+
+export interface FunctionUpdateQueue<State> extends UpdateQueue<State> {
+	lastEffect: Effect | null
 }
 
 // 当前执行渲染中的 fiberNode
@@ -55,7 +71,8 @@ export function renderWithHooks(wip: FiberNode, lane: Lane) {
 }
 
 const HooksDispatcherOnMount: Dispatcher = {
-	useState: mountState
+	useState: mountState,
+	useEffect: mountEffect
 }
 
 const HookDispatcherOnUpdate: Dispatcher = {
@@ -88,6 +105,11 @@ function mountState<State>(
 	return [memoizedState, dispatch]
 }
 
+/**
+ * updateState 的执行时机是在beginwork时 如果tag是FunctionComponent时，会执行renderWithHooks,
+ * 此时 代码中的useState 是 updateState, updateState 拿到的hook 是根据上一次更新的hook创建而来的新hook(有可能是mountstate)
+ * updateState 拿到的 queue 就是这次要更新的内容
+ */
 function updateState<State>(): [State, Dispatch<State>] {
 	// 找到当前useState 对应的 数据
 	const hook = updateWorkInProgressHook()
@@ -105,7 +127,62 @@ function updateState<State>(): [State, Dispatch<State>] {
 		)
 		hook.memoizedState = memoizedState
 	}
+	queue.shared.pending = null
 	return [hook.memoizedState, queue.dispatch as Dispatch<State>]
+}
+
+function mountEffect(create: EffectCallback | void, deps: EffectDeps | void) {
+	const hook = mountWorkInProgressHook()
+	const nextDeps = deps === undefined ? null : deps
+
+	;(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect
+	hook.memoizedState = pushEffect(
+		Passive | HookHasEffect,
+		create,
+		undefined,
+		nextDeps
+	)
+}
+
+function pushEffect(
+	hookFlags: Flags,
+	create: EffectCallback | void,
+	destory: EffectCallback | void,
+	deps: EffectDeps
+): Effect {
+	const effect: Effect = {
+		tag: hookFlags,
+		create,
+		deps,
+		destory,
+		next: null
+	}
+	const fiber = currentlyRenderingFiber as FiberNode
+	const updateQueue = fiber.updateQueue as FunctionUpdateQueue<any>
+	if (!updateQueue) {
+		const updateQueue = createFunctionUpdateQueue()
+		fiber.updateQueue = updateQueue
+		effect.next = effect
+		updateQueue.lastEffect = effect
+	} else {
+		const lastEffect = updateQueue.lastEffect
+		if (lastEffect === null) {
+			effect.next = effect
+			updateQueue.lastEffect = effect
+		} else {
+			const firstEffect = lastEffect.next
+			lastEffect.next = effect
+			effect.next = firstEffect
+			updateQueue.lastEffect = effect
+		}
+	}
+	return effect
+}
+
+function createFunctionUpdateQueue<State>() {
+	const updateQueue = createUpdateQueue<State>() as FunctionUpdateQueue<State>
+	updateQueue.lastEffect = null
+	return updateQueue
 }
 
 function mountWorkInProgressHook(): Hook {

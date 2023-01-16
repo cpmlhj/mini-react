@@ -13,13 +13,16 @@ export function flushSyncCallback() {
 	if (!isFlushingSyncQueue && syncQueue) {
 		isFlushingSyncQueue = true
 		try {
-			syncQueue.forEach((callback) => callback())
+			syncQueue.forEach((callback) => {
+				callback()
+			})
 		} catch (e) {
 			if (true) {
 				console.error('flushSyncCallback:error', e)
 			}
 		} finally {
 			isFlushingSyncQueue = false
+			syncQueue = null
 		}
 	}
 }

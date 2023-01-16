@@ -61,6 +61,13 @@ function ensureRootIsScheduled(root: FiberRootNode) {
 		// 同步优先级  用微任务调度
 		// [performSyncWorkOnRoot,performSyncWorkOnRoot,performSyncWorkOnRoot]
 		scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root, updateLane))
+		/**
+		 * !!! 这里值得注意的是（假设此次批量更新操作的优先级都是一样），下面的函数的执行时机 是当前JS调用栈已经是空， 开始执行微任务了
+		 * 在我们在一个函数（譬如onClick）中 多次执行 setState, 这个过程是同步的，当最后一个setState执行完后
+		 * updateQueue 已经构成了一条更新的链表，虽然performSyncWorkOnRoot 被推入了N次，但是他会在第一次中，把updateQueu
+		 * 中的要更新的内容一次性执行完，然后在ccommitRoot中将 root.pendingLane设置为NoLane
+		 * 那么在下一次执行performSyncWorkOnRoot时，会因为root.pendingLanes !==SyncLane 而return
+		 */
 		scheduleMicroTask(flushSyncCallback)
 	} else {
 		// 其他优先级  用宏任务调度
@@ -109,6 +116,7 @@ function commitRoot(root: FiberRootNode) {
 	}
 	root.finishWork = null
 	root.finishLanes = NoLane
+	// 关键操作 此时的
 	markRootFinished(root, lane)
 	// 判断 是否存在三个子阶段 需要执行的操作
 	const subtreeHasEffect =
