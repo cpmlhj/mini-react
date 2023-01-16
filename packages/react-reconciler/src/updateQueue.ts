@@ -1,9 +1,11 @@
 import { Dispatch } from 'react/src/currentDispatcher'
 import { Action } from 'shared/ReactTypes'
+import { Lane } from './fiberLanes'
 
 export interface Update<State> {
 	action: Action<State>
 	next: Update<any> | null
+	lane: Lane
 }
 
 export interface UpdateQueue<State> {
@@ -13,10 +15,14 @@ export interface UpdateQueue<State> {
 	dispatch: Dispatch<State> | null
 }
 
-export const createUpdate = <State>(action: Action<State>): Update<State> => {
+export const createUpdate = <State>(
+	action: Action<State>,
+	lane: Lane
+): Update<State> => {
 	return {
 		action,
-		next: null
+		next: null,
+		lane
 	}
 }
 
@@ -49,7 +55,8 @@ export const enqueueUpdate = <State>(
 
 export const processUpdateQueue = <State>(
 	baseState: State,
-	pendingUpdate: Update<State> | null
+	pendingUpdate: Update<State> | null,
+	renderLane: Lane
 ): {
 	memoizedState: State
 } => {
@@ -57,14 +64,25 @@ export const processUpdateQueue = <State>(
 		memoizedState: baseState
 	}
 	if (pendingUpdate !== null) {
-		// baseState 1 update 2 ->  memoizedState 2
-		//  baseState 1 update (x) => 2x -> memoizedState 2
-		const action = pendingUpdate.action
-		if (action instanceof Function) {
-			result.memoizedState = action(baseState)
-		} else {
-			result.memoizedState = action
-		}
+		const fisrt = pendingUpdate.next // 第一个更新
+		let pending = pendingUpdate.next as Update<any>
+		do {
+			const updateLane = pending?.lane
+			if (updateLane === renderLane) {
+				const action = pending?.action
+				if (action instanceof Function) {
+					baseState = action(baseState)
+				} else {
+					baseState = action
+				}
+			} else {
+				if (true) {
+					console.warn('当前更新 不应该进入')
+				}
+			}
+			pending = pending.next as Update<any>
+		} while (pending !== fisrt)
 	}
+	result.memoizedState = baseState
 	return result
 }

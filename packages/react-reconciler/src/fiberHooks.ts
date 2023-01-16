@@ -10,6 +10,7 @@ import {
 } from './updateQueue'
 import { scheduleUpdateOnFiber } from './workloop'
 import { Action } from 'shared/ReactTypes'
+import { Lane, NoLane, requestUpdateLane } from './fiberLanes'
 
 interface Hook {
 	memoizedState: any // 每个hook 自身存放的state
@@ -22,14 +23,16 @@ let currentlyRenderingFiber: FiberNode | null = null
 // 当前正在处理的hook
 let workInProgressHook: Hook | null = null
 let currentHook: Hook | null = null
+let renderLane: Lane = NoLane
 
 const { currentDispatcher } = internals
 
-export function renderWithHooks(wip: FiberNode) {
+export function renderWithHooks(wip: FiberNode, lane: Lane) {
 	// 赋值操作
 	currentlyRenderingFiber = wip
 	// 重置 FC中 memoizedState保存的是 hooks 链表数据
 	wip.memoizedState = null
+	renderLane = lane
 
 	const current = wip.alternate
 	if (current !== null) {
@@ -46,6 +49,7 @@ export function renderWithHooks(wip: FiberNode) {
 	// 重置
 	currentlyRenderingFiber = null
 	workInProgressHook = null
+	renderLane = NoLane
 	currentHook = null
 	return children
 }
@@ -96,7 +100,8 @@ function updateState<State>(): [State, Dispatch<State>] {
 	if (pending !== null) {
 		const { memoizedState } = processUpdateQueue(
 			hook.memoizedState, // 上一次hook的state
-			pending
+			pending,
+			renderLane
 		)
 		hook.memoizedState = memoizedState
 	}
@@ -175,7 +180,8 @@ function dispatchSetState<State>(
 	updateQueue: UpdateQueue<State>,
 	action: Action<State>
 ) {
-	const update = createUpdate(action)
+	const lane = requestUpdateLane()
+	const update = createUpdate(action, lane)
 	enqueueUpdate(updateQueue, update)
-	scheduleUpdateOnFiber(fiber)
+	scheduleUpdateOnFiber(fiber, lane)
 }

@@ -12,18 +12,19 @@ import {
 import { reconcilerChildFibers, mountChildFibers } from './childFiber'
 import { ReactElement } from 'shared/ReactTypes'
 import { renderWithHooks } from './fiberHooks'
+import { Lane } from './fiberLanes'
 
-export const beginWork = (wip: FiberNode) => {
+export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	// 比较、返回子fiber
 	switch (wip.tag) {
 		case HostRoot:
-			return updateHostRoot(wip)
+			return updateHostRoot(wip, renderLane)
 		case HostComponent:
 			return updateHostComponent(wip)
 		case HostText:
 			return null
 		case FunctionComponent:
-			return updateFunctionComponent(wip)
+			return updateFunctionComponent(wip, renderLane)
 		case Fragement:
 			return updateFragementComponent(wip)
 		default:
@@ -34,7 +35,7 @@ export const beginWork = (wip: FiberNode) => {
 	}
 }
 
-function updateHostRoot(wip: FiberNode) {
+function updateHostRoot(wip: FiberNode, renderLane: Lane) {
 	const baseState = wip.memoizedState
 	const updateQueue = wip.updateQueue as UpdateQueue<Element>
 	const pending = updateQueue.shared.pending
@@ -42,7 +43,7 @@ function updateHostRoot(wip: FiberNode) {
 	// 这里的memoizedState 其实就是  ReactDOM.createRoot('#app').render(<App/>) 中的 <App/>
 	// 在update的时候，流程会先找到FiberRoot.current(就是 hostRootFiber) 然后根据hostRootFiber 创建新的workInProgress
 	// 然后再一次用这里的memoizedState与current自上往下遍历比较生成新的Fiber树(值是赋给到workInProgress)
-	const { memoizedState } = processUpdateQueue(baseState, pending)
+	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane)
 	wip.memoizedState = memoizedState
 	const nextChildren = wip.memoizedState
 	reconcilerChildren(wip, nextChildren)
@@ -57,8 +58,8 @@ function updateHostComponent(wip: FiberNode) {
 	return wip.child
 }
 
-function updateFunctionComponent(wip: FiberNode) {
-	const nextChildren = renderWithHooks(wip)
+function updateFunctionComponent(wip: FiberNode, renderLane: Lane) {
+	const nextChildren = renderWithHooks(wip, renderLane)
 	reconcilerChildren(wip, nextChildren)
 	return wip.child
 }

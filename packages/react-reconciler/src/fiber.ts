@@ -7,6 +7,7 @@ import {
 } from './workTags'
 import { Flags, NoFlags } from './fiberFlags'
 import { Container } from 'hostConfig'
+import { Lanes, NoLane, NoLanes } from './fiberLanes'
 
 export class FiberNode {
 	tag: WorkTag
@@ -64,12 +65,16 @@ export class FiberRootNode {
 	container: Container
 	current: FiberNode
 	finishWork: FiberNode | null
+	pendingLanes: Lanes
+	finishLanes: Lanes
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container
 		this.current = hostRootFiber
 		hostRootFiber.stateNode = this
 		this.finishWork = null
+		this.pendingLanes = NoLanes
+		this.finishLanes = NoLanes
 	}
 }
 
