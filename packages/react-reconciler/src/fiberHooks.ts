@@ -65,6 +65,7 @@ export function renderWithHooks(wip: FiberNode, lane: Lane) {
 	// 重置
 	currentlyRenderingFiber = null
 	workInProgressHook = null
+	wip.updateQueue = null
 	renderLane = NoLane
 	currentHook = null
 	return children
@@ -76,7 +77,8 @@ const HooksDispatcherOnMount: Dispatcher = {
 }
 
 const HookDispatcherOnUpdate: Dispatcher = {
-	useState: updateState
+	useState: updateState,
+	useEffect: updateEffect
 }
 
 function mountState<State>(
@@ -142,6 +144,47 @@ function mountEffect(create: EffectCallback | void, deps: EffectDeps | void) {
 		undefined,
 		nextDeps
 	)
+}
+
+function updateEffect(create: EffectCallback | void, deps: EffectDeps | void) {
+	const hook = updateWorkInProgressHook()
+	const nextDeps = deps === undefined ? null : deps
+	let destory: EffectCallback | void
+	if (currentHook !== null) {
+		const preEffect = currentHook.memoizedState as Effect
+		destory = preEffect.destory
+		if (nextDeps !== null) {
+			// 比较依赖
+			const preDeps = preEffect.deps
+			if (areHookInputIsEqual(nextDeps, preDeps)) {
+				hook.memoizedState = pushEffect(
+					Passive,
+					create,
+					destory,
+					nextDeps
+				)
+				return
+			}
+			;(currentlyRenderingFiber as FiberNode).flags = PassiveEffect
+			hook.memoizedState = pushEffect(
+				Passive | HookHasEffect,
+				create,
+				destory,
+				nextDeps
+			)
+		}
+	}
+}
+
+function areHookInputIsEqual(nextDeps: EffectDeps, preDeps: EffectDeps) {
+	if (preDeps === null || nextDeps === null) return false
+	for (let i = 0; i < preDeps.length && i < nextDeps.length; i++) {
+		if (Object.is(preDeps[i], nextDeps[i])) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 function pushEffect(
