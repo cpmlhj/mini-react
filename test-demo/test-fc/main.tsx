@@ -1,8 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 
 const App = () => {
 	const [num, setNum] = useState(1)
+	useEffect(() => {
+		console.log('====================')
+		return () => {
+			console.log('workkj')
+		}
+	}, [])
 	// const test =
 	// 	num % 2 !== 0
 	// 		? [

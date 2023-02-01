@@ -29,6 +29,6 @@ export function getBaseRollupPlugin(
 	},
 	tsConfig = {}
 ) {
-	console.log(alias, '==================')
+	console.log(tsConfig, '==================')
 	return [replace(alias), commonJS(), typescript(tsConfig)]
 }

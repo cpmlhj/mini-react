@@ -139,6 +139,7 @@ function commitRoot(root: FiberRootNode) {
 		(finishWork.subtreeFlags & PassiveMask) !== NoFlags
 	) {
 		if (!rootDoesHasPassiveEffects) rootDoesHasPassiveEffects = true
+		// 异步调度执行
 		SchedulerCallback(normalPriority, () => {
 			// 执行副作用
 			flushPassiveEffects(root.pendingPassiveEffects)
@@ -192,14 +193,23 @@ function completeUnitOfWork(fiber: FiberNode) {
 	} while (node !== null)
 }
 
+/**
+ * useEffect(() => {  // 这是effect
+ *      return () => {}  // 这是 destory
+ * }, [] // 这是 依赖)
+ * @param pendingPassiveEffects
+ */
 function flushPassiveEffects(pendingPassiveEffects: PendingPassiveEffects) {
+	// 这里执行的是标记了delete的fiberNode(一直都是 type === FunctionComponent)所关联的effect的return 也叫destroy
 	pendingPassiveEffects.unmount.forEach((effect) => {
 		commitHookEffectListUnmount(Passive, effect)
 	})
 	pendingPassiveEffects.unmount = []
+	// 这里执行的是 依赖变更了的 effect， 他们也需要执行 此effect  的 上一次的 return
 	pendingPassiveEffects.update.forEach((effect) => {
 		commitHookEffectDestory(Passive | HookHasEffect, effect)
 	})
+	// 最后才执行需要更新的effect 然后再次将return 赋值给effect.destroy
 	pendingPassiveEffects.update.forEach((effect) => {
 		commitHookEffectListCreate(Passive | HookHasEffect, effect)
 	})

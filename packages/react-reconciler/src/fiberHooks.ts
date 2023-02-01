@@ -48,6 +48,7 @@ export function renderWithHooks(wip: FiberNode, lane: Lane) {
 	currentlyRenderingFiber = wip
 	// 重置 FC中 memoizedState保存的是 hooks 链表数据
 	wip.memoizedState = null
+	wip.updateQueue = null
 	renderLane = lane
 
 	const current = wip.alternate
@@ -61,11 +62,11 @@ export function renderWithHooks(wip: FiberNode, lane: Lane) {
 
 	const component = wip.type
 	const props = wip.pendingProps
+	// 执行完函数后，也就是执行了所有hooks 获取到了最新的state，呈现在ReactElement中
 	const children = component(props)
 	// 重置
 	currentlyRenderingFiber = null
 	workInProgressHook = null
-	wip.updateQueue = null
 	renderLane = NoLane
 	currentHook = null
 	return children
@@ -137,7 +138,7 @@ function mountEffect(create: EffectCallback | void, deps: EffectDeps | void) {
 	const hook = mountWorkInProgressHook()
 	const nextDeps = deps === undefined ? null : deps
 
-	;(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect
+	currentlyRenderingFiber!.flags |= PassiveEffect
 	hook.memoizedState = pushEffect(
 		Passive | HookHasEffect,
 		create,
@@ -156,6 +157,8 @@ function updateEffect(create: EffectCallback | void, deps: EffectDeps | void) {
 		if (nextDeps !== null) {
 			// 比较依赖
 			const preDeps = preEffect.deps
+			// 这里会有关键点，deps获取到的值，其实是执行了 setState之后的值（最新的值），因为 deps的state 所指的 useState 总是比 useEffect 执行
+			// 毕竟变量还没声明，是不能作为参数传入的
 			if (areHookInputIsEqual(nextDeps, preDeps)) {
 				hook.memoizedState = pushEffect(
 					Passive,
@@ -165,7 +168,8 @@ function updateEffect(create: EffectCallback | void, deps: EffectDeps | void) {
 				)
 				return
 			}
-			;(currentlyRenderingFiber as FiberNode).flags = PassiveEffect
+			// 依赖的state发生了change, 标记effect需要在commit阶段执行、同时标记fiberNode flags 合并值PassiveEffect，代表当前fiberNode节点有需要执行的effect
+			currentlyRenderingFiber!.flags = PassiveEffect
 			hook.memoizedState = pushEffect(
 				Passive | HookHasEffect,
 				create,
@@ -187,6 +191,14 @@ function areHookInputIsEqual(nextDeps: EffectDeps, preDeps: EffectDeps) {
 	return true
 }
 
+/**
+ *
+ * @param hookFlags
+ * @param create
+ * @param destory
+ * @param deps
+ * @returns
+ */
 function pushEffect(
 	hookFlags: Flags,
 	create: EffectCallback | void,
@@ -257,9 +269,14 @@ function updateWorkInProgressHook(): Hook {
 	let nextCurrentHook: Hook | null = null
 	if (currentHook === null) {
 		// FC update时第一个Hook
+
+		/**
+		 * 这里的alternate 有时候会有个疑惑，就是在第一次update时，currentlyRenderingFiber 其实是FiberRootNode.current.alternate 的FiberNode
+		 * 就是 画面上正在使用的是FiberRootNode.current，那么 currentlyRenderingFiber.alternate  === FiberRootNode.current  （特指某个FiberNode节点）
+		 */
 		const current = currentlyRenderingFiber?.alternate
 		if (current !== null) {
-			nextCurrentHook = current?.memoizedState
+			nextCurrentHook = current?.memoizedState // 这里的memoizedState 就是当前画面更新前的hook链表
 		}
 	} else {
 		nextCurrentHook = currentHook.next

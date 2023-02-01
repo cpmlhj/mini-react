@@ -88,6 +88,13 @@ export const commitMutationEffectOnFiber = (
 	}
 }
 
+/**
+ * 收集沿途的节点中 需要执行的effect
+ * @param fiber
+ * @param root
+ * @param type
+ * @returns
+ */
 function commitPassiveEffect(
 	fiber: FiberNode,
 	root: FiberRootNode,

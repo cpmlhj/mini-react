@@ -10,10 +10,10 @@ import {
 	createInstance,
 	appendInitialChild,
 	createTextInstance,
-	Container
+	Container,
+	Instance
 } from 'hostConfig'
 import { NoFlags, Update } from './fiberFlags'
-import { updateFiberProps } from 'react-dom/src/SyntheticEvent'
 
 export const completeWork = (wip: FiberNode) => {
 	// 递归中的归
@@ -22,10 +22,11 @@ export const completeWork = (wip: FiberNode) => {
 	switch (wip.tag) {
 		case HostComponent:
 			if (current !== null && wip.stateNode) {
-				// update
+				// TODO: update
 				// props 是否发生变化
 				// 1.变化了  update flag
-				updateFiberProps(wip.stateNode, newProps)
+				markUpdate(wip)
+				// updateFiberProps(wip.stateNode, newProps)
 			} else {
 				// 1. 构建Dom
 				// 2. 将Dom插入到Dom树
@@ -89,7 +90,7 @@ export const completeWork = (wip: FiberNode) => {
  * ③ 如果没有兄弟FiberNode 则对父FiberNode 的兄弟执行步骤①
  * ④ 当遍历流程回到最初的workInProgress(就是入参时候的FiberNode)时终止
  */
-function appendAllChildren(parent: Container, wip: FiberNode) {
+function appendAllChildren(parent: Container | Instance, wip: FiberNode) {
 	let node = wip.child
 	while (node !== null) {
 		if (node?.tag === HostComponent || node?.tag === HostText) {

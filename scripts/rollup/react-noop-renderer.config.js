@@ -2,7 +2,7 @@ import { getPkgJson, resolvePkgPath, getBaseRollupPlugin } from './utils'
 import generatePackageJson from 'rollup-plugin-generate-package-json'
 import alias from '@rollup/plugin-alias'
 
-const { name, module, peerDependencies } = getPkgJson('react-dom')
+const { name, module, peerDependencies } = getPkgJson('react-noop-renderer')
 const pkgPath = resolvePkgPath(name)
 const pkgBuildPath = resolvePkgPath(name, true)
 export default [
@@ -12,18 +12,27 @@ export default [
 		output: [
 			{
 				file: `${pkgBuildPath}/index.js`,
-				name: 'ReactDOM',
-				format: 'umd'
-			},
-			{
-				file: `${pkgBuildPath}/client.js`,
-				name: 'client.js',
+				name: 'ReactNoopRenderer',
 				format: 'umd'
 			}
 		],
 		external: [...Object.keys(peerDependencies), 'scheduler'],
 		plugins: [
-			...getBaseRollupPlugin(),
+			...getBaseRollupPlugin(
+				{ preventAssignment: true },
+				{
+					exclude: ['./packages/react-dom/**/*'],
+					tsconfigOverride: {
+						compilerOptions: {
+							paths: {
+								hostConfig: [
+									'./react-noop-renderer/src/hostConfig.ts'
+								]
+							}
+						}
+					}
+				}
+			),
 			alias({
 				entries: {
 					hostConfig: `${pkgPath}/src/hostConfig.ts`
@@ -43,16 +52,5 @@ export default [
 				})
 			})
 		]
-	},
-	// react-test
-	{
-		input: `${pkgPath}/test-utils.ts`,
-		output: {
-			file: `${pkgBuildPath}/test-utils.js`,
-			name: 'testUtils.js',
-			format: 'umd'
-		},
-		external: ['react-dom', 'react'],
-		plugins: [...getBaseRollupPlugin()]
 	}
 ]
