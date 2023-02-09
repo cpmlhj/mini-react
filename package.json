@@ -46,6 +46,7 @@
     },
     "dependencies": {
         "@rollup/plugin-replace": "^5.0.2",
+        "jest-react": "^0.14.0",
         "scheduler": "^0.23.0"
     }
 }
