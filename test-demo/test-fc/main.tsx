@@ -3,12 +3,6 @@ import ReactDOM from 'react-dom/client'
 
 const App = () => {
 	const [num, setNum] = useState(1)
-	useEffect(() => {
-		console.log('====================')
-		return () => {
-			console.log('workkj')
-		}
-	}, [])
 	// const test =
 	// 	num % 2 !== 0
 	// 		? [
@@ -27,16 +21,19 @@ const App = () => {
 			key="ulk"
 			onClick={() => {
 				setNum((num) => num + 1)
-				setNum((num) => num + 1)
-				setNum((num) => num + 1)
 			}}
 		>
-			{/* <>
-				<span>1</span>
-				<span>2</span>
-				{test}
-			</> */}
-			{num}
+			{num % 2 !== 0 ? (
+				<div>
+					<span>1</span>
+					<span>2</span>
+				</div>
+			) : (
+				<p>
+					<h1>3</h1>
+					<h1>4</h1>
+				</p>
+			)}
 		</ul>
 	)
 }

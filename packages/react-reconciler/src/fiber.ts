@@ -7,8 +7,9 @@ import {
 } from './workTags'
 import { Flags, NoFlags } from './fiberFlags'
 import { Container } from 'hostConfig'
-import { Lanes, NoLane, NoLanes } from './fiberLanes'
+import { Lanes, NoLane, NoLanes, Lane } from './fiberLanes'
 import { Effect } from './fiberHooks'
+import { CallbackNode } from 'scheduler'
 
 export interface PendingPassiveEffects {
 	unmount: Effect[]
@@ -74,6 +75,8 @@ export class FiberRootNode {
 	pendingLanes: Lanes
 	finishLanes: Lanes
 	pendingPassiveEffects: PendingPassiveEffects
+	callbackNode: CallbackNode | null
+	callbackPriority: Lane
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container
@@ -83,6 +86,8 @@ export class FiberRootNode {
 		this.pendingLanes = NoLanes
 		this.finishLanes = NoLanes
 		this.pendingPassiveEffects = { unmount: [], update: [] }
+		this.callbackNode = null
+		this.callbackPriority = NoLane
 	}
 }
 

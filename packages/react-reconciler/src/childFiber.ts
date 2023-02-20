@@ -77,6 +77,17 @@ function ChildReconciler(shouldTrackEffects: boolean) {
 		currentFiber: FiberNode | null,
 		element: ReactElement
 	) {
+		/**
+		 * <div>
+		 *   <span>1</span>
+		 *    <span>2</span>
+		 * </div>
+		 *  -->
+		 *  <p>
+		 *    <h1>2</h1>
+		 *   <h1>3</h1>
+		 * </p>
+		 */
 		const key = element.key
 		while (currentFiber !== null) {
 			// update

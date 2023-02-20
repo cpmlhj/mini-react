@@ -1,5 +1,11 @@
 import { Container } from 'hostConfig'
 import { props } from 'shared/ReactTypes'
+import {
+	unstable_ImmediatePriority as ImmediatePriority,
+	unstable_UserBlockingPriority as UserBlockingPriority,
+	unstable_NormalPriority as NormalPriority,
+	unstable_runWithPriority
+} from 'scheduler'
 
 const validEventTypeList = ['click']
 export const elementPropsKey = '__props'
@@ -56,6 +62,9 @@ function dispatchEvent(container: Container, eventType: string, e: Event) {
 function triggerEventFlow(paths: EventCallback[], se: SyntheticEvent) {
 	for (let i = 0; i < paths.length; i++) {
 		const callback = paths[i]
+		unstable_runWithPriority(eventTypeToSchdulerPriority(se.type), () =>
+			callback.call(null, se)
+		)
 		callback.call(null, se)
 		if (se.__stopPropagation) {
 			// 在事件 捕获、冒泡阶段 如果某个事件回调逻辑 执行了 e.stopPropagation，则 立刻停止 事件传递，体现到React中 就是 停止事情遍历
@@ -118,4 +127,17 @@ function createSyntheticEvent(e: Event) {
 		if (originStopPropagation) originStopPropagation() // 执行浏览器原生的 stopPropagation
 	}
 	return syntheticEvent
+}
+
+function eventTypeToSchdulerPriority(eventType: string) {
+	switch (eventType) {
+		case 'click':
+		case 'keydown':
+		case 'keyup':
+			return ImmediatePriority
+		case 'scroll':
+			return UserBlockingPriority
+		default:
+			return NormalPriority
+	}
 }
