@@ -6,6 +6,7 @@ import {
 	createUpdateQueue,
 	enqueueUpdate,
 	processUpdateQueue,
+	Update,
 	UpdateQueue
 } from './updateQueue'
 import { scheduleUpdateOnFiber } from './workloop'
@@ -19,6 +20,8 @@ type EffectDeps = any[] | null
 interface Hook {
 	memoizedState: any // 每个hook 自身存放的state
 	updateQueue: unknown
+	baseState: any
+	baseQueue: Update<any> | null
 	next: Hook | null
 }
 
@@ -121,16 +124,33 @@ function updateState<State>(): [State, Dispatch<State>] {
 	// 因为 上一次 执行完 useState 返回的 dispatch中，将最新的state 传入到dispatch
 	// 然后 dispatch 内部逻辑 将 参数state 以参数形式传入到 createQueue中
 	const queue = hook.updateQueue as UpdateQueue<State>
+	const baseState = hook.baseState
 	const pending = queue.shared.pending
+	const current = currentHook as Hook
+	let baseQueue = current.baseQueue
+	// update 保存到current中
 	if (pending !== null) {
-		const { memoizedState } = processUpdateQueue(
-			hook.memoizedState, // 上一次hook的state
-			pending,
-			renderLane
-		)
-		hook.memoizedState = memoizedState
+		if (baseQueue !== null) {
+			const baseFirst = baseQueue.next
+			const pendingFirst = pending.next
+			baseQueue.next = pendingFirst
+			pending.next = baseFirst
+		}
+		baseQueue = pending
+		// 保存在current中
+		current.baseQueue = pending
+		queue.shared.pending = null
+		if (baseQueue !== null) {
+			const {
+				memoizedState,
+				baseQueue: newBaseQueue,
+				baseState: newBaseState
+			} = processUpdateQueue(baseState, baseQueue, renderLane)
+			hook.memoizedState = memoizedState
+			hook.baseState = newBaseState
+			hook.baseQueue = newBaseQueue as Update<State>
+		}
 	}
-	queue.shared.pending = null
 	return [hook.memoizedState, queue.dispatch as Dispatch<State>]
 }
 
@@ -244,7 +264,9 @@ function mountWorkInProgressHook(): Hook {
 	const hook: Hook = {
 		memoizedState: null,
 		updateQueue: null,
-		next: null
+		next: null,
+		baseQueue: null,
+		baseState: null
 	}
 	if (workInProgressHook === null) {
 		// mount 并且是第一个hook
@@ -295,7 +317,9 @@ function updateWorkInProgressHook(): Hook {
 	const newHook: Hook = {
 		memoizedState: currentHook?.memoizedState,
 		updateQueue: currentHook?.updateQueue,
-		next: null
+		next: null,
+		baseQueue: currentHook.baseQueue,
+		baseState: currentHook.baseState
 	}
 	if (workInProgressHook === null) {
 		if (currentlyRenderingFiber === null) {

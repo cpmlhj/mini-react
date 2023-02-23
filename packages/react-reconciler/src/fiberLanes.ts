@@ -53,3 +53,7 @@ function schedulerPriorityToLane(schedulerPriority: number) {
 	if (schedulerPriority === unstable_NormalPriority) return defaultLane
 	return IdleLane
 }
+
+export function isSubsetOfLane(set: Lanes, subset: Lane) {
+	return (set & subset) === subset
+}

@@ -1,6 +1,6 @@
 import { Dispatch } from 'react/src/currentDispatcher'
 import { Action } from 'shared/ReactTypes'
-import { Lane } from './fiberLanes'
+import { isSubsetOfLane, Lane, NoLane } from './fiberLanes'
 
 export interface Update<State> {
 	action: Action<State>
@@ -59,30 +59,59 @@ export const processUpdateQueue = <State>(
 	renderLane: Lane
 ): {
 	memoizedState: State
+	baseState: State
+	baseQueue: Update<State> | null
 } => {
 	const result: ReturnType<typeof processUpdateQueue<State>> = {
-		memoizedState: baseState
+		memoizedState: baseState,
+		baseState,
+		baseQueue: null
 	}
 	if (pendingUpdate !== null) {
 		const fisrt = pendingUpdate.next // 第一个更新
 		let pending = pendingUpdate.next as Update<any>
+		let newBaseState = baseState
+		let newBaseQueueFirst: Update<State> | null = null
+		let newBaseQueueLast: Update<State> | null = null
+		let newState = baseState
 		do {
 			const updateLane = pending?.lane
-			if (updateLane === renderLane) {
-				const action = pending?.action
-				if (action instanceof Function) {
-					baseState = action(baseState)
+			if (!isSubsetOfLane(renderLane, updateLane)) {
+				// 优先级🙅🏻不够
+				const clone = createUpdate(pending.action, pending.lane)
+				// 是不是第一个被跳过的
+				if (newBaseQueueFirst === null) {
+					newBaseQueueFirst = clone
+					newBaseQueueLast = clone
+					newBaseState = newState
 				} else {
-					baseState = action
+					;(newBaseQueueLast as Update<State>).next = clone
+					newBaseQueueLast = clone
 				}
 			} else {
-				if (true) {
-					console.warn('当前更新 不应该进入')
+				if (newBaseQueueFirst !== null) {
+					const clone = createUpdate(pending.action, NoLane)
+					;(newBaseQueueLast as Update<State>).next = clone
+					newBaseQueueLast = clone
+				}
+				const action = pending?.action
+				if (action instanceof Function) {
+					newState = action(baseState)
+				} else {
+					newState = action
 				}
 			}
 			pending = pending.next as Update<any>
 		} while (pending !== fisrt)
+		if (newBaseQueueLast === null) {
+			// 本次计算没有update 跳过
+			newBaseState = newState
+		} else {
+			newBaseQueueLast.next = newBaseQueueFirst
+		}
+		result.memoizedState = newState
+		result.baseQueue = newBaseQueueLast
+		result.baseState = newBaseState
 	}
-	result.memoizedState = baseState
 	return result
 }
