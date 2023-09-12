@@ -1,18 +1,27 @@
 // 递归中的 递阶段
 
-import { FiberNode } from './fiber'
+import {
+	FiberNode,
+	OffScreenProps,
+	createFiberFromFragement,
+	createFiberOffscreen,
+	createWorkInProgress
+} from './fiber'
 import { processUpdateQueue, UpdateQueue } from './updateQueue'
 import {
 	HostRoot,
 	HostComponent,
 	HostText,
 	FunctionComponent,
-	Fragement
+	Fragement,
+	SuspenceComponent,
+	OffScreen
 } from './workTags'
 import { reconcilerChildFibers, mountChildFibers } from './childFiber'
 import { ReactElement } from 'shared/ReactTypes'
 import { renderWithHooks } from './fiberHooks'
 import { Lane } from './fiberLanes'
+import { ChildDeletion, Placement } from './fiberFlags'
 
 export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	// 比较、返回子fiber
@@ -27,6 +36,10 @@ export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 			return updateFunctionComponent(wip, renderLane)
 		case Fragement:
 			return updateFragementComponent(wip)
+		case SuspenceComponent:
+			return updateSuspenceComponent(wip)
+		case OffScreen:
+			return updateOffScreenComponent(wip)
 		default:
 			if (true) {
 				console.warn('beginWork 未实现')
@@ -68,6 +81,150 @@ function updateFragementComponent(wip: FiberNode) {
 	const nextChildren = wip.pendingProps
 	reconcilerChildren(wip, nextChildren)
 	return wip.child
+}
+
+function updateSuspenceComponent(wip: FiberNode) {
+	const current = wip.alternate
+	const nextProps = wip.pendingProps
+	let showFallback = false
+	const didSuspencePending = true
+	if (didSuspencePending) {
+		showFallback = true
+	}
+	const nextPrimaryChildren = nextProps.children
+	const nextFallbackChildren = nextProps.fallback
+	if (current === null) {
+		// mount阶段
+		if (showFallback) {
+			// pending
+			return mountSuspenceFallbackChildren(
+				wip,
+				nextPrimaryChildren,
+				nextFallbackChildren
+			)
+		} else {
+			// 正常
+			return mountSuspencePrimaryChildren(wip, nextPrimaryChildren)
+		}
+	} else {
+		// update流程
+		if (showFallback) {
+			// pending
+			return updateSuspenceFallbackChildren(
+				wip,
+				nextPrimaryChildren,
+				nextFallbackChildren
+			)
+		} else {
+			// 正常
+			return updateSuspencePrimaryChildren(wip, nextPrimaryChildren)
+		}
+	}
+}
+
+function updateOffScreenComponent(wip: FiberNode) {
+	const nextProps = wip.pendingProps
+	const nextChildren = nextProps.children
+	reconcilerChildren(wip, nextChildren)
+	return wip.child
+}
+
+function mountSuspencePrimaryChildren(wip: FiberNode, primaryChilren: any) {
+	const primaryChildProps: OffScreenProps = {
+		mode: 'visable',
+		children: primaryChilren
+	}
+	const primaryChildrenFiber = createFiberOffscreen(primaryChildProps)
+	wip.child = primaryChildrenFiber
+	primaryChildrenFiber.return = wip
+	return primaryChildrenFiber
+}
+
+function mountSuspenceFallbackChildren(
+	wip: FiberNode,
+	primaryChilren: any,
+	fallbackChildren: any
+) {
+	const primaryChildProps: OffScreenProps = {
+		mode: 'hidden',
+		children: primaryChilren
+	}
+	const primaryChildrenFiber = createFiberOffscreen(primaryChildProps)
+	const fallbackChildrenFiber = createFiberFromFragement(fallbackChildren)
+
+	/**
+	 * 手动标记fallbackChildren, 因为mount阶段
+	 */
+	fallbackChildrenFiber.flags |= Placement
+
+	primaryChildrenFiber.return = wip
+	fallbackChildrenFiber.return = wip
+	primaryChildrenFiber.sibling = fallbackChildrenFiber
+	wip.child = primaryChildrenFiber
+	return fallbackChildrenFiber
+}
+
+function updateSuspenceFallbackChildren(
+	wip: FiberNode,
+	primaryChilren: any,
+	fallbackChildren: any
+) {
+	const current = wip.alternate
+	const currentPrimaryChildrenFiber = current?.child as FiberNode
+	const currentFallbackChildrenFiber: FiberNode | null =
+		currentPrimaryChildrenFiber.sibling
+	const primaryChildProps: OffScreenProps = {
+		mode: 'hidden',
+		children: primaryChilren
+	}
+
+	const primaryChildrenFiber = createWorkInProgress(
+		currentPrimaryChildrenFiber,
+		primaryChildProps
+	)
+	let fallbackChildrenFiber
+	if (currentFallbackChildrenFiber) {
+		fallbackChildrenFiber = createWorkInProgress(
+			currentFallbackChildrenFiber,
+			fallbackChildren
+		)
+	} else {
+		fallbackChildrenFiber = createFiberFromFragement(fallbackChildren)
+		fallbackChildrenFiber.flags |= Placement
+	}
+	primaryChildrenFiber.return = wip
+	fallbackChildrenFiber.return = wip
+	primaryChildrenFiber.sibling = fallbackChildrenFiber
+	wip.child = primaryChildrenFiber
+	return fallbackChildrenFiber
+}
+
+function updateSuspencePrimaryChildren(wip: FiberNode, primaryChilren: any) {
+	const current = wip.alternate
+	const currentPrimaryChildren = current?.child as FiberNode
+	const currentFallbackChildrenFiber: FiberNode | null =
+		currentPrimaryChildren.sibling
+	const primaryChildProps: OffScreenProps = {
+		mode: 'visable',
+		children: primaryChilren
+	}
+	const primaryChildrenFiber = createWorkInProgress(
+		currentPrimaryChildren,
+		primaryChildProps
+	)
+	primaryChildrenFiber.return = wip
+	primaryChildrenFiber.sibling = null
+	wip.child = primaryChildrenFiber
+	if (currentFallbackChildrenFiber) {
+		const deletions = wip.deletions
+		if (!deletions) {
+			wip.deletions = [currentFallbackChildrenFiber]
+			wip.flags |= ChildDeletion
+		} else {
+			deletions.push(currentFallbackChildrenFiber)
+		}
+	}
+	return primaryChildrenFiber
 }
 
 function reconcilerChildren(wip: FiberNode, child: ReactElement | null) {

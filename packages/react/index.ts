@@ -2,6 +2,10 @@
 import { Dispatcher, resolveDispatcher } from './src/currentDispatcher'
 import { jsx, isValidElementFn } from './src/jsx'
 import currentDispatcher from './src/currentDispatcher'
+export {
+	REACT_SUSPENSE_TYPE as Suspence,
+	REACT_FRAGEMENT_TYPE as Fragement
+} from 'shared/ReactSymbol'
 
 export const useState: Dispatcher['useState'] = (initialState) => {
 	const dispatcher = resolveDispatcher()

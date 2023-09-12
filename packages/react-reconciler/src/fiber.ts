@@ -3,6 +3,8 @@ import {
 	Fragement,
 	FunctionComponent,
 	HostComponent,
+	OffScreen,
+	SuspenceComponent,
 	WorkTag
 } from './workTags'
 import { Flags, NoFlags } from './fiberFlags'
@@ -10,10 +12,16 @@ import { Container } from 'hostConfig'
 import { Lanes, NoLane, NoLanes, Lane } from './fiberLanes'
 import { Effect } from './fiberHooks'
 import { CallbackNode } from 'scheduler'
+import { REACT_SUSPENSE_TYPE } from 'shared/ReactSymbol'
 
 export interface PendingPassiveEffects {
 	unmount: Effect[]
 	update: Effect[]
+}
+
+export interface OffScreenProps {
+	mode: 'visable' | 'hidden'
+	children: any
 }
 
 export class FiberNode {
@@ -123,6 +131,8 @@ export function createFiberFromElement(element: ReactElement): FiberNode {
 	if (typeof type === 'string') {
 		// <div/> type: 'div'
 		fiberTag = HostComponent
+	} else if (type === REACT_SUSPENSE_TYPE) {
+		fiberTag = SuspenceComponent
 	} else if (typeof type !== 'function' && true) {
 		console.warn('未定义的type类型', element)
 	}
@@ -131,7 +141,15 @@ export function createFiberFromElement(element: ReactElement): FiberNode {
 	return fiber
 }
 
-export function createFiberFromFragement(elements: any[], key: Key): FiberNode {
+export function createFiberFromFragement(
+	elements: any[],
+	key?: Key
+): FiberNode {
 	const fiber = new FiberNode(Fragement, elements, key)
+	return fiber
+}
+
+export function createFiberOffscreen(pendingProps: OffScreenProps) {
+	const fiber = new FiberNode(OffScreen, pendingProps, null)
 	return fiber
 }

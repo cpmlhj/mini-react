@@ -2,7 +2,6 @@
 
 const JestReact = require('jest-react')
 const SchedulerMatchers = require('./schedulerTestMatchers')
-
 function captureAssertion(fn) {
 	// Trick to use a Jest matcher inside another Jest matcher. `fn` contains an
 	// assertion; if it throws, we capture the error and return it, so the stack

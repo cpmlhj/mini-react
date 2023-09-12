@@ -7,3 +7,7 @@ export const REACT_ELEMENT_TYPE = supportSymbol
 export const REACT_FRAGEMENT_TYPE = supportSymbol
 	? Symbol.for('react.fragement')
 	: 0xeacb
+
+export const REACT_SUSPENSE_TYPE = supportSymbol
+	? Symbol.for('react.suspence')
+	: 0xeac3
